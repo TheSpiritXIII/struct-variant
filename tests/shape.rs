@@ -61,10 +61,10 @@ fn print_shape(shape: ShapeEnum) {
 
 #[test]
 fn test() {
-	let circle = Circle::with_radius(2);
-	let rectangle = Rectangle::new(2, 3);
-	print_area(&circle);
-	print_area(&rectangle);
+	let circle: ShapeEnum = Circle::with_radius(2).into();
+	let rectangle: ShapeEnum = Rectangle::new(2, 3).into();
+	print_area(circle.as_ref());
+	print_area(rectangle.as_ref());
 	print_shape(circle.into());
 	print_shape(rectangle.into());
 }

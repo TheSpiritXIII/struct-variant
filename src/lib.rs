@@ -2,15 +2,18 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use proc_macro::TokenStream;
+use proc_macro_error::{Diagnostic, Level};
 use quote::quote;
-use syn::{Error, Ident};
+use syn::spanned::Spanned;
+use syn::{Error, Fields, Ident, Item, TraitBound};
 
 // TODO: https://github.com/rust-lang/rust/issues/54722
 // TODO: https://github.com/rust-lang/rust/issues/54140
 #[proc_macro_attribute]
 pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream {
-	let item: syn::Item = syn::parse(input).expect("Failed to parse input token stream");
-	let sealed_ident: Ident = syn::parse(metadata).expect("Failed to parse metadata token stream");
+	let item: Item = syn::parse(input).expect("Failed to parse input token stream");
+	let sealed_ident: TraitBound =
+		syn::parse(metadata).expect("Failed to parse metadata token stream");
 
 	let enum_item = if let syn::Item::Enum(ref enum_item) = item {
 		enum_item
@@ -20,44 +23,48 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 	};
 
 	let mut struct_map = HashMap::new();
+	let mut diagnostic_list = Vec::new();
 	for variant in &enum_item.variants {
-		let mut error_list = Vec::new();
 		if !variant.attrs.is_empty() {
-			let e = Error::new_spanned(variant, "Expected struct name: found attributes")
-				.to_compile_error();
-			error_list.push(e);
+			diagnostic_list.push(Diagnostic::spanned(
+				variant.span(),
+				Level::Error,
+				"Expected struct name: found attributes".to_string(),
+			));
 		}
-		if !matches!(variant.fields, syn::Fields::Unit) {
-			let e = Error::new_spanned(variant, "Expected struct name: found fields")
-				.to_compile_error();
-			error_list.push(e);
+		if !matches!(variant.fields, Fields::Unit) {
+			diagnostic_list.push(Diagnostic::spanned(
+				variant.span(),
+				Level::Error,
+				"Expected struct name: found fields".to_string(),
+			));
 		}
 		if variant.discriminant.is_some() {
-			let e = Error::new_spanned(variant, "Expected struct name: found discriminant")
-				.to_compile_error();
-			error_list.push(e);
+			diagnostic_list.push(Diagnostic::spanned(
+				variant.span(),
+				Level::Error,
+				"Expected struct name: found discriminant".to_string(),
+			));
 		}
-		if let Some(a) = struct_map.insert(&variant.ident, variant) {
-			let e = Error::new_spanned(
-				variant,
-				format!("Duplicate variant name: {}", variant.ident),
-			)
-			.to_compile_error();
-			// TODO: Make this a warning.
-			let e2 = Error::new_spanned(
-				a,
-				format!("Duplicate variant name first found here: {}", variant.ident),
-			)
-			.to_compile_error();
-			error_list.push(e);
-			error_list.push(e2);
+		if let Some(variant_duplicate) = struct_map.insert(&variant.ident, variant) {
+			diagnostic_list.push(
+				Diagnostic::spanned(
+					variant.span(),
+					Level::Error,
+					format!("Duplicate variant name: {}", variant.ident),
+				)
+				.span_note(
+					variant_duplicate.span(),
+					"Duplicate variant name first found here".to_string(),
+				),
+			);
 		}
-		if !error_list.is_empty() {
-			let r = quote! {
-				#(#error_list)*
-			};
-			return r.into();
-		}
+	}
+	if !diagnostic_list.is_empty() {
+		let r = quote! {
+			#(#diagnostic_list)*
+		};
+		return r.into();
 	}
 
 	let attrs = &enum_item.attrs;

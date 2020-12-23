@@ -29,8 +29,8 @@ Using this library, we can reduce boilerplate, we can solve the other issue:
 ```rust
 #[struct_variant(Shape)]
 enum ShapeEnum {
-    Circle,
-    Rectangle,
+	Circle,
+	Rectangle,
 }
 ```
 
@@ -49,10 +49,11 @@ fn print_shape(shape: ShapeEnum) {
 We can also call any method with a `dyn Shape` argument with a `Shape` implementation directly, as the macro implements all `From` methods:
 ```rust
 fn print_area(shape: &dyn Shape) {
-    println!("Area: {}", shape.area());
+	println!("Area: {}", shape.area());
 }
 
-print_area(&Circle::with_radius(5));
+let circle: ShapeEnum = Circle::with_radius(2).into();
+print_area(circle.as_ref());
 ```
 
 In these examples, `ShapeEnum` includes all implementations of `Shape`. We call this a _sealed type_. If instead it only included a subset of all `Shape` implementation, we can call this partially sealed.
