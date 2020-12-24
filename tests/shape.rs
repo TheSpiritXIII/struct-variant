@@ -1,4 +1,5 @@
 use struct_variant::struct_variant;
+use core::fmt::Debug;
 
 trait Shape {
 	fn area(&self) -> f64;
@@ -50,13 +51,13 @@ enum ShapeEnum {
 	Rectangle,
 }
 
-fn print_shape(shape: ShapeEnum) {
+fn print_shape(shape: &ShapeEnum) {
 	let name = match shape {
 		ShapeEnum::Circle(_) => "Circle",
 		ShapeEnum::Rectangle(_) => "Rectangle",
 	};
 	println!("Shape: {}, Area: {}", name, shape.as_ref().area());
-	println!("Debug: {:?}", shape);
+	println!("Debug ShapeEnum: {:?}", shape);
 }
 
 #[test]
@@ -65,6 +66,36 @@ fn test() {
 	let rectangle: ShapeEnum = Rectangle::new(2, 3).into();
 	print_area(circle.as_ref());
 	print_area(rectangle.as_ref());
-	print_shape(circle.into());
-	print_shape(rectangle.into());
+	print_shape(&circle);
+	print_shape(&rectangle);
+	print_debug(&circle);
+	print_debug(&rectangle);
+}
+
+#[struct_variant(Shape + Debug)]
+enum ShapeEnumWithDebug {
+	Circle,
+	Rectangle,
+}
+
+fn print_debug<T: Debug + ?Sized>(debug: &T) {
+	println!("Debug: {:?}", debug);
+}
+
+#[test]
+fn test_multi() {
+	let circle: ShapeEnumWithDebug = Circle::with_radius(2).into();
+	let rectangle: ShapeEnumWithDebug = Rectangle::new(2, 3).into();
+	print_area(circle.as_ref());
+	print_area(rectangle.as_ref());
+	print_debug::<dyn Debug>(circle.as_ref());
+	println!("Manual: {:?}", AsRef::<dyn Debug>::as_ref(&circle));
+	print_debug::<dyn Debug>(rectangle.as_ref());
+	println!("Manual: {:?}", AsRef::<dyn Debug>::as_ref(&rectangle));
+}
+
+#[struct_variant]
+enum ShapeEnumNoBounds {
+	Circle,
+	Rectangle,
 }

@@ -57,3 +57,30 @@ print_area(circle.as_ref());
 ```
 
 In these examples, `ShapeEnum` includes all implementations of `Shape`. We call this a _sealed type_. If instead it only included a subset of all `Shape` implementation, we can call this partially sealed.
+
+## Trait Bounds
+The annotation can include multiple trait bounds:
+```rust
+fn print_debug(debug: &dyn Debug) {
+	println!("Debug: {:?}", debug);
+}
+
+#[struct_variant(Shape + Debug)]
+enum ShapeEnumWithDebug {
+	Circle,
+	Rectangle,
+}
+
+let circle: ShapeEnumWithDebug = Circle::with_radius(2).into();
+print_debug(circle.as_ref());
+println!("Manual: {:?}", AsRef::<dyn Debug>::as_ref(&circle));
+```
+
+Or none, but you'd have to pattern match whenever you use it:
+```rust
+#[struct_variant]
+enum ShapeEnumNoBounds {
+	Circle,
+	Rectangle,
+}
+```

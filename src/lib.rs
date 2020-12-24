@@ -4,7 +4,7 @@ use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro_error::{proc_macro_error, Diagnostic, Level};
 use quote::quote;
-use syn::{spanned::Spanned, Fields, Ident, Item, TraitBound};
+use syn::{Fields, Ident, Item, TraitBound, punctuated::Punctuated, spanned::Spanned, Token, parse::Parser};
 
 // TODO: https://github.com/rust-lang/rust/issues/54722
 // TODO: https://github.com/rust-lang/rust/issues/54140
@@ -20,7 +20,8 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 		)
 		.abort();
 	};
-	let sealed_ident: TraitBound = if let Ok(item) = syn::parse(metadata) {
+	let parser = Punctuated::<TraitBound, Token![+]>::parse_terminated;
+	let sealed_item = if let Ok(item) = parser.parse(metadata) {
 		item
 	} else {
 		Diagnostic::new(
@@ -81,9 +82,15 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 	let ident = &enum_item.ident;
 	let generics = &enum_item.generics;
 
-	// TODO: https://github.com/rust-lang/rust/issues/75294
 	let struct_list: Vec<&Ident> = struct_map.iter().map(|(id, _)| *id).sorted().collect();
-	let x = quote! {
+	let sealed_list: Vec<&Ident> = sealed_item.iter().map(|trait_bound| trait_bound.path.get_ident()).map(Option::unwrap).collect();
+
+	let cast_tokens = quote! {
+		#( #ident::#struct_list(ref value) => value ),*
+	};
+
+	// TODO: https://github.com/rust-lang/rust/issues/75294
+	let result = quote! {
 		#(#attrs)*
 		#vis enum #ident#generics {
 			#(#struct_list(#struct_list)),*
@@ -97,13 +104,15 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 			}
 		)*
 
-		impl<'a> AsRef<dyn #sealed_ident + 'a> for #ident {
-			fn as_ref(&self) -> &(dyn #sealed_ident + 'a) {
-				match self {
-					#( #ident::#struct_list(ref value) => value ),*
+		#(
+			impl<'a> AsRef<dyn #sealed_list + 'a> for #ident {
+				fn as_ref(&self) -> &(dyn #sealed_list + 'a) {
+					match self {
+						#cast_tokens
+					}
 				}
 			}
-		}
+		)*
 	};
-	x.into()
+	result.into()
 }
