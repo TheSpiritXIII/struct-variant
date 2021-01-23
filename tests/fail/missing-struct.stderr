@@ -1,0 +1,21 @@
+error[E0412]: cannot find type `DoesNotExistNoBound` in this scope
+  --> $DIR/missing-struct.rs:11:2
+   |
+11 |     DoesNotExistNoBound // Will error.
+   |     ^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: there is an enum variant `crate::ShapeEnumNoBound::DoesNotExistNoBound`; try using the variant's enum
+   |
+11 |     crate::ShapeEnumNoBound // Will error.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `DoesNotExistShapeBound` in this scope
+  --> $DIR/missing-struct.rs:18:2
+   |
+18 |     DoesNotExistShapeBound // Will error.
+   |     ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: there is an enum variant `crate::ShapeEnumShapeBound::DoesNotExistShapeBound`; try using the variant's enum
+   |
+18 |     crate::ShapeEnumShapeBound // Will error.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

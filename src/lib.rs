@@ -1,3 +1,6 @@
+// #![feature(extended_key_value_attributes)]
+// #[doc = include_str!("../README.md")]
+
 use std::collections::HashMap;
 
 use itertools::Itertools;
@@ -115,4 +118,16 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 		)*
 	};
 	result.into()
+}
+
+#[test]
+fn ui() {
+	let t = trybuild::TestCases::new();
+	t.compile_fail("tests/fail/missing-struct.rs");
+	t.compile_fail("tests/fail/enum-syntax.rs");
+	t.pass("tests/pass/bound-single.rs");
+	t.pass("tests/pass/bound-none.rs");
+	t.pass("tests/pass/bound-multi.rs");
+	// t.pass("tests/pass/rename.rs");
+	// t.pass("tests/pass/generic.rs");
 }

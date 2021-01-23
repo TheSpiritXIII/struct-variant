@@ -1,0 +1,23 @@
+error: Expected struct name: found fields
+ --> $DIR/enum-syntax.rs:9:2
+  |
+9 |     Circle { x: i32, y: i32 },
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Expected struct name: found fields
+  --> $DIR/enum-syntax.rs:10:2
+   |
+10 |     Rectangle(Rectangle, Rectangle),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Expected struct name: found fields
+  --> $DIR/enum-syntax.rs:15:2
+   |
+15 |     Circle { x: i32, y: i32 },
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Expected struct name: found fields
+  --> $DIR/enum-syntax.rs:16:2
+   |
+16 |     Rectangle(Rectangle, Rectangle),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
