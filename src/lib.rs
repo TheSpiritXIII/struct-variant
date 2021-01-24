@@ -7,37 +7,32 @@ use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro_error::{proc_macro_error, Diagnostic, Level};
 use quote::quote;
-use syn::{Fields, Ident, Item, TraitBound, punctuated::Punctuated, spanned::Spanned, Token, parse::Parser};
+use syn::{Fields, Ident, TraitBound, punctuated::Punctuated, spanned::Spanned, Token, parse::Parser};
 
 // TODO: https://github.com/rust-lang/rust/issues/54722
 // TODO: https://github.com/rust-lang/rust/issues/54140
 #[proc_macro_error]
 #[proc_macro_attribute]
 pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream {
-	let item: Item = if let Ok(item) = syn::parse(input) {
-		item
-	} else {
-		Diagnostic::new(
-			Level::Error,
-			"Failed to parse input token stream".to_string(),
-		)
-		.abort();
-	};
 	let parser = Punctuated::<TraitBound, Token![+]>::parse_terminated;
-	let sealed_item = if let Ok(item) = parser.parse(metadata) {
-		item
-	} else {
-		Diagnostic::new(
+	let bound_item = match parser.parse(metadata) {
+		Ok(item) => item,
+		Err(e) => Diagnostic::spanned(
+			e.span(),
 			Level::Error,
-			"Failed to parse metadata token stream".to_string(),
+			format!("Unable to parse struct variant attribute: {} ", e),
 		)
-		.abort();
+		.abort(),
 	};
 
-	let enum_item = if let syn::Item::Enum(ref enum_item) = item {
-		enum_item
-	} else {
-		Diagnostic::spanned(item.span(), Level::Error, "Expected enum".to_string()).abort();
+	let enum_item: syn::ItemEnum = match syn::parse(input) {
+		Ok(item) => item,
+		Err(e) => Diagnostic::spanned(
+			e.span(),
+			Level::Error,
+			format!("Failed to parse struct variant input: {}", e),
+		)
+		.abort(),
 	};
 
 	let mut struct_map = HashMap::new();
@@ -85,8 +80,12 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 	let ident = &enum_item.ident;
 	let generics = &enum_item.generics;
 
-	let struct_list: Vec<&Ident> = struct_map.iter().map(|(id, _)| *id).sorted().collect();
-	let sealed_list: Vec<&Ident> = sealed_item.iter().map(|trait_bound| trait_bound.path.get_ident()).map(Option::unwrap).collect();
+	let struct_list: Vec<_> = struct_map.iter().map(|(id, _)| id).sorted().collect();
+	let bound_list: Vec<&Ident> = bound_item
+		.iter()
+		.map(|trait_bound| trait_bound.path.get_ident())
+		.map(Option::unwrap)
+		.collect();
 
 	let cast_tokens = quote! {
 		#( #ident::#struct_list(ref value) => value ),*
@@ -108,8 +107,8 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 		)*
 
 		#(
-			impl<'a> AsRef<dyn #sealed_list + 'a> for #ident {
-				fn as_ref(&self) -> &(dyn #sealed_list + 'a) {
+			impl<'a> AsRef<dyn #bound_list + 'a> for #ident {
+				fn as_ref(&self) -> &(dyn #bound_list + 'a) {
 					match self {
 						#cast_tokens
 					}
@@ -125,6 +124,7 @@ fn ui() {
 	let t = trybuild::TestCases::new();
 	t.compile_fail("tests/fail/missing-struct.rs");
 	t.compile_fail("tests/fail/enum-syntax.rs");
+	t.compile_fail("tests/fail/not-enum.rs");
 	t.pass("tests/pass/bound-single.rs");
 	t.pass("tests/pass/bound-none.rs");
 	t.pass("tests/pass/bound-multi.rs");

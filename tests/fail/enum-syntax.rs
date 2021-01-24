@@ -1,7 +1,3 @@
-#[path="../common/mod.rs"]
-mod common;
-
-use common::*;
 use struct_variant::struct_variant;
 
 #[struct_variant]

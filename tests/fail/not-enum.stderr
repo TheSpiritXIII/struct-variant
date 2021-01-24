@@ -1,0 +1,5 @@
+error: Failed to parse struct variant input: expected `enum`
+ --> $DIR/not-enum.rs:4:1
+  |
+4 | struct ShapeStruct {
+  | ^^^^^^
