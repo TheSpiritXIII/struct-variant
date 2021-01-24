@@ -3,6 +3,11 @@ name = "struct-variant"
 version = "0.1.0"
 authors = ["Daniel Hrabovcak <thespiritxiii@gmail.com>"]
 edition = "2018"
+license = "MIT"
+description = "Minimal helper macros to generate enums out of a group of structs."
+repository = "https://github.com/TheSpiritXIII/struct-variant"
+documentation = "https://docs.rs/struct-variant"
+readme = "README.md"
 
 [lib]
 proc-macro = true

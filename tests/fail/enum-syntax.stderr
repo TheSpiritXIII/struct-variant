@@ -1,23 +1,11 @@
-error: Expected struct name: found fields
- --> $DIR/enum-syntax.rs:5:2
+error: Failed to parse struct variant input: expected `,`
+ --> $DIR/enum-syntax.rs:5:9
   |
 5 |     Circle { x: i32, y: i32 },
-  |     ^^^^^^
+  |            ^^^^^^^^^^^^^^^^^^
 
-error: Expected struct name: found fields
- --> $DIR/enum-syntax.rs:6:2
-  |
-6 |     Rectangle(Rectangle, Rectangle),
-  |     ^^^^^^^^^
-
-error: Expected struct name: found fields
-  --> $DIR/enum-syntax.rs:11:2
+error: Failed to parse struct variant input: expected `,`
+  --> $DIR/enum-syntax.rs:11:9
    |
 11 |     Circle { x: i32, y: i32 },
-   |     ^^^^^^
-
-error: Expected struct name: found fields
-  --> $DIR/enum-syntax.rs:12:2
-   |
-12 |     Rectangle(Rectangle, Rectangle),
-   |     ^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^

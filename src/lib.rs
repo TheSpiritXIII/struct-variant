@@ -7,7 +7,81 @@ use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro_error::{proc_macro_error, Diagnostic, Level};
 use quote::quote;
-use syn::{Fields, Ident, TraitBound, punctuated::Punctuated, spanned::Spanned, Token, parse::Parser};
+use syn::{
+	braced,
+	parenthesized,
+	parse,
+	parse::{Parse, ParseStream, Parser},
+	punctuated::Punctuated,
+	token::{Brace, Paren},
+	Attribute,
+	Generics,
+	Ident,
+	Token,
+	TraitBound,
+	Visibility,
+};
+
+struct Field {
+	pub paren_token: Paren,
+	pub ident: Ident,
+}
+
+impl Parse for Field {
+	fn parse(input: ParseStream) -> Result<Self, syn::Error> {
+		let content;
+		Ok(Field {
+			paren_token: parenthesized!(content in input),
+			ident: content.parse()?,
+		})
+	}
+}
+
+struct Variant {
+	pub ident: Ident,
+	pub field: Option<Field>,
+}
+
+impl Parse for Variant {
+	fn parse(input: ParseStream) -> Result<Self, syn::Error> {
+		Ok(Variant {
+			ident: input.parse()?,
+			field: {
+				if input.peek(Paren) {
+					let field: Field = input.parse()?;
+					Some(field)
+				} else {
+					None
+				}
+			},
+		})
+	}
+}
+
+struct VariantEnum {
+	pub attrs: Vec<Attribute>,
+	pub vis: Visibility,
+	pub enum_token: Token![enum],
+	pub ident: Ident,
+	pub generics: Generics,
+	pub brace_token: Brace,
+	pub variants: Punctuated<Variant, Token![,]>,
+}
+
+impl Parse for VariantEnum {
+	fn parse(input: ParseStream) -> Result<Self, syn::Error> {
+		let content;
+		Ok(VariantEnum {
+			attrs: input.call(Attribute::parse_outer)?,
+			vis: input.parse()?,
+			enum_token: input.parse()?,
+			ident: input.parse()?,
+			generics: input.parse()?,
+			brace_token: braced!(content in input),
+			variants: content.parse_terminated(Variant::parse)?,
+		})
+	}
+}
 
 // TODO: https://github.com/rust-lang/rust/issues/54722
 // TODO: https://github.com/rust-lang/rust/issues/54140
@@ -25,7 +99,7 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 		.abort(),
 	};
 
-	let enum_item: syn::ItemEnum = match syn::parse(input) {
+	let enum_item: VariantEnum = match parse(input) {
 		Ok(item) => item,
 		Err(e) => Diagnostic::spanned(
 			e.span(),
@@ -37,38 +111,15 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 
 	let mut struct_map = HashMap::new();
 	for variant in &enum_item.variants {
-		if !variant.attrs.is_empty() {
+		let ident = &variant.ident;
+		if let Some(variant_duplicate) = struct_map.insert(ident.clone(), variant) {
 			Diagnostic::spanned(
-				variant.span(),
+				variant.ident.span(),
 				Level::Error,
-				"Expected struct name: found attributes".to_string(),
-			)
-			.emit();
-		}
-		if !matches!(variant.fields, Fields::Unit) {
-			Diagnostic::spanned(
-				variant.span(),
-				Level::Error,
-				"Expected struct name: found fields".to_string(),
-			)
-			.emit();
-		}
-		if variant.discriminant.is_some() {
-			Diagnostic::spanned(
-				variant.span(),
-				Level::Error,
-				"Expected struct name: found discriminant".to_string(),
-			)
-			.emit();
-		}
-		if let Some(variant_duplicate) = struct_map.insert(&variant.ident, variant) {
-			Diagnostic::spanned(
-				variant.span(),
-				Level::Error,
-				format!("Duplicate variant name: {}", variant.ident),
+				format!("Duplicate variant name: {}", &ident),
 			)
 			.span_note(
-				variant_duplicate.span(),
+				variant_duplicate.ident.span(),
 				"Duplicate variant name first found here".to_string(),
 			)
 			.emit()
@@ -80,37 +131,58 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 	let ident = &enum_item.ident;
 	let generics = &enum_item.generics;
 
-	let struct_list: Vec<_> = struct_map.iter().map(|(id, _)| id).sorted().collect();
+	let enum_list: Vec<_> = struct_map
+		.values()
+		.map(|variant| {
+			let struct_ident = variant
+				.field
+				.as_ref()
+				.map_or(&variant.ident, |field| &field.ident);
+			(&variant.ident, struct_ident)
+		})
+		.sorted()
+		.collect();
 	let bound_list: Vec<&Ident> = bound_item
 		.iter()
 		.map(|trait_bound| trait_bound.path.get_ident())
 		.map(Option::unwrap)
 		.collect();
 
-	let cast_tokens = quote! {
-		#( #ident::#struct_list(ref value) => value ),*
+	let enum_field = enum_list.iter().map(|(variant_ident, struct_ident)| {
+		quote! {
+			#variant_ident(#struct_ident)
+		}
+	});
+
+	let from_impl = enum_list.iter().map(|(variant_ident, struct_ident)| {
+		quote! {
+			impl From<#struct_ident> for #ident {
+				fn from(value: #struct_ident) -> Self {
+					Self::#variant_ident(value)
+				}
+			}
+		}
+	});
+
+	let variant_list: Vec<_> = enum_list.iter().map(|(id, _)| id).collect();
+	let as_ref_match_arm = quote! {
+		#( #ident::#variant_list(ref value) => value ),*
 	};
 
 	// TODO: https://github.com/rust-lang/rust/issues/75294
 	let result = quote! {
 		#(#attrs)*
 		#vis enum #ident#generics {
-			#(#struct_list(#struct_list)),*
+			#(#enum_field),*
 		}
 
-		#(
-			impl From<#struct_list> for #ident {
-				fn from(value: #struct_list) -> Self {
-					Self::#struct_list(value)
-				}
-			}
-		)*
+		#(#from_impl)*
 
 		#(
 			impl<'a> AsRef<dyn #bound_list + 'a> for #ident {
 				fn as_ref(&self) -> &(dyn #bound_list + 'a) {
 					match self {
-						#cast_tokens
+						#as_ref_match_arm
 					}
 				}
 			}
@@ -128,6 +200,6 @@ fn ui() {
 	t.pass("tests/pass/bound-single.rs");
 	t.pass("tests/pass/bound-none.rs");
 	t.pass("tests/pass/bound-multi.rs");
-	// t.pass("tests/pass/rename.rs");
+	t.pass("tests/pass/rename.rs");
 	// t.pass("tests/pass/generic.rs");
 }
