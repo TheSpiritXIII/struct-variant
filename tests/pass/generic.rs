@@ -7,18 +7,24 @@ struct Value<X> {
 	x: X,
 }
 
-impl Marker for Value<X> {}
+impl<X> Marker for Value<X> {}
 
 struct Phantom<X> {
-	phantom: PhantomType<X>,
+	phantom: PhantomData<X>,
 }
 
-impl Marker for Phantom<X> {}
+impl<X> Marker for Phantom<X> {}
 
 #[struct_variant(Marker)]
 enum GenericAlias {
-	Sized(Value<isize>),
-	Unsized(Value<usize>),
+	Unsized(Value<u8>),
+	Sized(Value<i8>),
+}
+
+fn test_generic_alias() {
+	let value =  Value { x: 1i8 };
+	let alias: GenericAlias = value.into();
+	assert!(matches!(alias, GenericAlias::Sized(value) if value.x == 1i8))
 }
 
 #[struct_variant(Marker)]
@@ -27,12 +33,26 @@ enum GenericShare<X> {
 	Phantom(Phantom<X>),
 }
 
+fn test_generic_share() {
+	let value =  Value { x: 1i8 };
+	let alias: GenericShare<_> = value.into();
+	assert!(matches!(alias, GenericShare::Value(value) if value.x == 1i8))
+}
+
 #[struct_variant(Marker)]
 enum Generic<X, Y> {
 	Value(Value<X>),
 	Phantom(Phantom<Y>),
 }
 
+fn test_generic() {
+	let value =  Value { x: 1i8 };
+	let alias: Generic<_, u8> = value.into();
+	assert!(matches!(alias, Generic::Value(value) if value.x == 1i8))
+}
+
 fn main() {
-	todo!();
+	test_generic_alias();
+	test_generic_share();
+	test_generic();
 }

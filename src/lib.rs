@@ -1,9 +1,9 @@
 // #![feature(extended_key_value_attributes)]
 // #[doc = include_str!("../README.md")]
 
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
 
-use itertools::Itertools;
+use itertools::{EitherOrBoth, Itertools};
 use proc_macro::TokenStream;
 use proc_macro_error::{proc_macro_error, Diagnostic, Level};
 use quote::quote;
@@ -15,8 +15,11 @@ use syn::{
 	punctuated::Punctuated,
 	token::{Brace, Paren},
 	Attribute,
+	GenericParam,
 	Generics,
 	Ident,
+	Path,
+	PathSegment,
 	Token,
 	TraitBound,
 	Visibility,
@@ -24,7 +27,7 @@ use syn::{
 
 struct Field {
 	pub paren_token: Paren,
-	pub ident: Ident,
+	pub path: Path,
 }
 
 impl Parse for Field {
@@ -32,7 +35,7 @@ impl Parse for Field {
 		let content;
 		Ok(Field {
 			paren_token: parenthesized!(content in input),
-			ident: content.parse()?,
+			path: content.parse()?,
 		})
 	}
 }
@@ -56,6 +59,51 @@ impl Parse for Variant {
 			},
 		})
 	}
+}
+
+fn ident_to_path(ident: &Ident) -> Path {
+	let mut punctuated = Punctuated::new();
+	punctuated.push_value(syn::PathSegment {
+		ident: ident.clone(),
+		arguments: syn::PathArguments::None,
+	});
+	Path {
+		leading_colon: None,
+		segments: punctuated,
+	}
+}
+
+fn path_segment_cmp(path_segment_lhs: &PathSegment, path_segment_rhs: &PathSegment) -> Ordering {
+	path_segment_lhs
+		.ident
+		.cmp(&path_segment_rhs.ident)
+		.then_with(|| Ordering::Less)
+}
+
+fn path_cmp(path_lhs: &Path, path_rhs: &Path) -> Ordering {
+	if path_lhs.leading_colon.is_some() {
+		if !path_rhs.leading_colon.is_some() {
+			return Ordering::Less;
+		}
+	} else {
+		if path_rhs.leading_colon.is_some() {
+			return Ordering::Greater;
+		}
+	}
+
+	path_lhs
+		.segments
+		.iter()
+		.zip_longest(path_rhs.segments.iter())
+		.map(|x| match x {
+			EitherOrBoth::Both(path_segment_lhs, path_segment_rhs) => {
+				path_segment_cmp(path_segment_lhs, path_segment_rhs)
+			}
+			EitherOrBoth::Left(_) => Ordering::Less,
+			EitherOrBoth::Right(_) => Ordering::Greater,
+		})
+		.find(|ordering| !matches!(ordering, Ordering::Equal))
+		.unwrap_or(Ordering::Equal)
 }
 
 struct VariantEnum {
@@ -130,6 +178,14 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 	let vis = &enum_item.vis;
 	let ident = &enum_item.ident;
 	let generics = &enum_item.generics;
+	let generic_params = &generics.params;
+	let generics_params_types = generics.params.iter().filter_map(|param| match param {
+		GenericParam::Type(t) => Some(t.ident.clone()),
+		_ => None,
+	});
+	let generics_params_types_lifetimes = quote! {
+		#( #generics_params_types: 'a ),*
+	};
 
 	let enum_list: Vec<_> = struct_map
 		.values()
@@ -137,10 +193,17 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 			let struct_ident = variant
 				.field
 				.as_ref()
-				.map_or(&variant.ident, |field| &field.ident);
+				.map(|field| field.path.clone())
+				.unwrap_or_else(|| ident_to_path(&variant.ident));
 			(&variant.ident, struct_ident)
 		})
-		.sorted()
+		.sorted_by(
+			|(lhs_variant_ident, lhs_struct_ident), (rhs_variant_ident, rhs_struct_ident)| {
+				lhs_variant_ident
+					.cmp(rhs_variant_ident)
+					.then_with(|| path_cmp(lhs_struct_ident, rhs_struct_ident))
+			},
+		)
 		.collect();
 	let bound_list: Vec<&Ident> = bound_item
 		.iter()
@@ -156,7 +219,7 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 
 	let from_impl = enum_list.iter().map(|(variant_ident, struct_ident)| {
 		quote! {
-			impl From<#struct_ident> for #ident {
+			impl#generics From<#struct_ident> for #ident#generics {
 				fn from(value: #struct_ident) -> Self {
 					Self::#variant_ident(value)
 				}
@@ -179,7 +242,7 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 		#(#from_impl)*
 
 		#(
-			impl<'a> AsRef<dyn #bound_list + 'a> for #ident {
+			impl<'a, #generic_params> AsRef<dyn #bound_list + 'a> for #ident#generics where #generics_params_types_lifetimes {
 				fn as_ref(&self) -> &(dyn #bound_list + 'a) {
 					match self {
 						#as_ref_match_arm
@@ -201,5 +264,5 @@ fn ui() {
 	t.pass("tests/pass/bound-none.rs");
 	t.pass("tests/pass/bound-multi.rs");
 	t.pass("tests/pass/rename.rs");
-	// t.pass("tests/pass/generic.rs");
+	t.pass("tests/pass/generic.rs");
 }

@@ -18,7 +18,7 @@ itertools = "0.10.0"
 proc-macro-error = "1.0.4"
 
 [dependencies.syn]
-version = "1.0.59"
+version = "1.0.60"
 features = ["full"]
 
 [dev-dependencies]
