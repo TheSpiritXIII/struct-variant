@@ -7,23 +7,7 @@ use itertools::{EitherOrBoth, Itertools};
 use proc_macro::TokenStream;
 use proc_macro_error::{proc_macro_error, Diagnostic, Level};
 use quote::quote;
-use syn::{
-	braced,
-	parenthesized,
-	parse,
-	parse::{Parse, ParseStream, Parser},
-	punctuated::Punctuated,
-	token::{Brace, Paren},
-	Attribute,
-	GenericParam,
-	Generics,
-	Ident,
-	Path,
-	PathSegment,
-	Token,
-	TraitBound,
-	Visibility,
-};
+use syn::{Attribute, GenericParam, Generics, Ident, Lifetime, Path, PathSegment, Token, TraitBound, Visibility, braced, parenthesized, parse, parse_str, parse::{Parse, ParseStream, Parser}, punctuated::Punctuated, token::{Brace, Paren}};
 
 struct Field {
 	pub paren_token: Paren,
@@ -183,8 +167,9 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 		GenericParam::Type(t) => Some(t.ident.clone()),
 		_ => None,
 	});
+	let lifetime_ident: Lifetime = parse_str("'struct_variant_lifetime").unwrap();
 	let generics_params_types_lifetimes = quote! {
-		#( #generics_params_types: 'a ),*
+		#( #generics_params_types: #lifetime_ident ),*
 	};
 
 	let enum_list: Vec<_> = struct_map
@@ -242,8 +227,8 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 		#(#from_impl)*
 
 		#(
-			impl<'a, #generic_params> AsRef<dyn #bound_list + 'a> for #ident#generics where #generics_params_types_lifetimes {
-				fn as_ref(&self) -> &(dyn #bound_list + 'a) {
+			impl<#lifetime_ident, #generic_params> AsRef<dyn #bound_list + #lifetime_ident> for #ident#generics where #generics_params_types_lifetimes {
+				fn as_ref(&self) -> &(dyn #bound_list + #lifetime_ident) {
 					match self {
 						#as_ref_match_arm
 					}
