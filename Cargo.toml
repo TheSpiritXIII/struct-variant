@@ -9,7 +9,7 @@ repository = "https://github.com/TheSpiritXIII/struct-variant"
 documentation = "https://docs.rs/struct-variant"
 readme = "README.md"
 categories = ["rust-patterns"]
-keywords = ["sealed", "from", "any", "convert", "cast", "downcast", "upcast", "error"]
+keywords = ["sealed", "from", "any", "convert", "cast"]
 include = ["src/**/*", "Cargo.toml"]
 
 [lib]
