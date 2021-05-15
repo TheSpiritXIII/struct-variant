@@ -38,6 +38,7 @@ struct Field {
 }
 
 impl Parse for Field {
+	#[allow(clippy::eval_order_dependence)]
 	fn parse(input: ParseStream) -> Result<Self, syn::Error> {
 		let content;
 		Ok(Field {
@@ -89,13 +90,11 @@ fn path_segment_cmp(path_segment_lhs: &PathSegment, path_segment_rhs: &PathSegme
 
 fn path_cmp(path_lhs: &Path, path_rhs: &Path) -> Ordering {
 	if path_lhs.leading_colon.is_some() {
-		if !path_rhs.leading_colon.is_some() {
+		if path_rhs.leading_colon.is_none() {
 			return Ordering::Less;
 		}
-	} else {
-		if path_rhs.leading_colon.is_some() {
-			return Ordering::Greater;
-		}
+	} else if path_rhs.leading_colon.is_some() {
+		return Ordering::Greater;
 	}
 
 	path_lhs
@@ -126,6 +125,7 @@ struct VariantEnum {
 }
 
 impl Parse for VariantEnum {
+	#[allow(clippy::eval_order_dependence)]
 	fn parse(input: ParseStream) -> Result<Self, syn::Error> {
 		let content;
 		Ok(VariantEnum {
