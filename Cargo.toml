@@ -10,7 +10,7 @@ documentation = "https://docs.rs/struct-variant"
 readme = "README.md"
 categories = ["rust-patterns"]
 keywords = ["sealed", "from", "any", "convert", "cast"]
-include = ["src/**/*", "Cargo.toml"]
+include = ["src/**/*", "Cargo.toml", "README.md"]
 
 [lib]
 proc-macro = true

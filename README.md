@@ -1,12 +1,15 @@
 [![Crates][crates-badge]][crates-url]
+[![Docs][docs-badge]][docs-url]
 [![License][license-badge]][license-url]
 [![Build][build-badge]][build-url]
 
-[crates-badge]: https://img.shields.io/crates/v/struct-variant.svg
+[crates-badge]: https://img.shields.io/crates/v/struct-variant
 [crates-url]: https://crates.io/crates/struct-variant
-[license-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[docs-badge]: https://img.shields.io/docsrs/struct-variant
+[docs-url]: https://docs.rs/struct-variant
+[license-badge]: https://img.shields.io/crates/l/struct-variant
 [license-url]: https://github.com/TheSpiritXIII/struct-variant/blob/main/LICENSE
-[build-badge]: https://github.com/TheSpiritXIII/struct-variant/workflows/Rust/badge.svg
+[build-badge]: https://img.shields.io/github/workflow/status/TheSpiritXIII/struct-variant/Rust/main
 [build-url]: https://github.com/TheSpiritXIII/struct-variant/actions?query=workflow%3ARust+branch%3Amain
 
 Minimal helper macro to generate an enum out of a list of structs.
