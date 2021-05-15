@@ -17,7 +17,7 @@ Minimal helper macro to generate an enum out of a list of structs.
 ## 60 Seconds Example
 Install:
 ```bash
-cargo install struct-variant
+cargo add struct-variant
 ```
 
 Setup:
@@ -86,7 +86,7 @@ struct Circle { ... }
 struct Rectangle { ... };
 ```
 
-Occasionally we may want to pass around a dynamic `Shape` type with the ability to downcast. In this scenario, [`std::any::Any`](https://doc.rust-lang.org/std/any/trait.Any.html) would not work because it relies on compile-time information. We can pass a `&dyn Shape` around but you can only call common trait methods. To get around both of those issues, we can create an enum that holds all of our variants:
+Occasionally we may want to pass around a dynamic `Shape` type with the ability to downcast. [`std::any::Any`](https://doc.rust-lang.org/std/any/trait.Any.html) would work occasionally, but it does not work with all scenarios (see the [official Rust docs](https://doc.rust-lang.org/std/any/index.html) for limitations). We can pass a `&dyn Shape` around but you can only call common trait methods. To get around both of those issues, we can create an enum that holds all of our variants:
 ```rust
 enum ShapeEnum {
 	Circle(Circle),
