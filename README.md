@@ -202,10 +202,11 @@ enum Qux {
 ## Contributing
 Contributions are welcome and highly appreciated!
 
-Please run the formatter and linter first before making a pull request:
+Please run the formatter, linter and unit tests first before making a pull request:
 ```bash
 cargo +nightly fmt
 cargo clippy
+cargo test
 ```
 
 ### Building Docs
