@@ -1,6 +1,11 @@
 hard_tabs = true
 unstable_features = true
+
+comment_width = 100
+error_on_line_overflow = true
+force_multiline_blocks = true
+group_imports = "StdExternalCrate"
+imports_granularity = "Item"
+imports_layout = "Horizontal"
+# width_heuristics = "Max"
 wrap_comments = true
-comment_width = 120
-imports_layout = "HorizontalVertical"
-merge_imports = true

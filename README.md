@@ -195,3 +195,12 @@ enum Qux {
 	FooI8(Foo<i8>),
 }
 ```
+
+## Contributing
+Contributions are welcome and highly appreciated!
+
+Please run the formatter and linter first:
+```rust
+cargo +nightly fmt
+cargo clippy
+```

@@ -1,13 +1,36 @@
 // #![feature(extended_key_value_attributes)]
 // #[doc = include_str!("../README.md")]
 
-use std::{cmp::Ordering, collections::HashMap};
+use std::cmp::Ordering;
+use std::collections::HashMap;
 
-use itertools::{EitherOrBoth, Itertools};
+use itertools::EitherOrBoth;
+use itertools::Itertools;
 use proc_macro::TokenStream;
-use proc_macro_error::{proc_macro_error, Diagnostic, Level};
+use proc_macro_error::proc_macro_error;
+use proc_macro_error::Diagnostic;
+use proc_macro_error::Level;
 use quote::quote;
-use syn::{Attribute, GenericParam, Generics, Ident, Lifetime, Path, PathSegment, Token, TraitBound, Visibility, braced, parenthesized, parse, parse_str, parse::{Parse, ParseStream, Parser}, punctuated::Punctuated, token::{Brace, Paren}};
+use syn::braced;
+use syn::parenthesized;
+use syn::parse;
+use syn::parse::Parse;
+use syn::parse::ParseStream;
+use syn::parse::Parser;
+use syn::parse_str;
+use syn::punctuated::Punctuated;
+use syn::token::Brace;
+use syn::token::Paren;
+use syn::Attribute;
+use syn::GenericParam;
+use syn::Generics;
+use syn::Ident;
+use syn::Lifetime;
+use syn::Path;
+use syn::PathSegment;
+use syn::Token;
+use syn::TraitBound;
+use syn::Visibility;
 
 struct Field {
 	pub paren_token: Paren,
@@ -79,12 +102,14 @@ fn path_cmp(path_lhs: &Path, path_rhs: &Path) -> Ordering {
 		.segments
 		.iter()
 		.zip_longest(path_rhs.segments.iter())
-		.map(|x| match x {
-			EitherOrBoth::Both(path_segment_lhs, path_segment_rhs) => {
-				path_segment_cmp(path_segment_lhs, path_segment_rhs)
+		.map(|x| {
+			match x {
+				EitherOrBoth::Both(path_segment_lhs, path_segment_rhs) => {
+					path_segment_cmp(path_segment_lhs, path_segment_rhs)
+				}
+				EitherOrBoth::Left(_) => Ordering::Less,
+				EitherOrBoth::Right(_) => Ordering::Greater,
 			}
-			EitherOrBoth::Left(_) => Ordering::Less,
-			EitherOrBoth::Right(_) => Ordering::Greater,
 		})
 		.find(|ordering| !matches!(ordering, Ordering::Equal))
 		.unwrap_or(Ordering::Equal)
@@ -123,22 +148,26 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 	let parser = Punctuated::<TraitBound, Token![+]>::parse_terminated;
 	let bound_item = match parser.parse(metadata) {
 		Ok(item) => item,
-		Err(e) => Diagnostic::spanned(
-			e.span(),
-			Level::Error,
-			format!("Unable to parse struct variant attribute: {} ", e),
-		)
-		.abort(),
+		Err(e) => {
+			Diagnostic::spanned(
+				e.span(),
+				Level::Error,
+				format!("Unable to parse struct variant attribute: {} ", e),
+			)
+			.abort()
+		}
 	};
 
 	let enum_item: VariantEnum = match parse(input) {
 		Ok(item) => item,
-		Err(e) => Diagnostic::spanned(
-			e.span(),
-			Level::Error,
-			format!("Failed to parse struct variant input: {}", e),
-		)
-		.abort(),
+		Err(e) => {
+			Diagnostic::spanned(
+				e.span(),
+				Level::Error,
+				format!("Failed to parse struct variant input: {}", e),
+			)
+			.abort()
+		}
 	};
 
 	let mut struct_map = HashMap::new();
@@ -163,9 +192,11 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 	let ident = &enum_item.ident;
 	let generics = &enum_item.generics;
 	let generic_params = &generics.params;
-	let generics_params_types = generics.params.iter().filter_map(|param| match param {
-		GenericParam::Type(t) => Some(t.ident.clone()),
-		_ => None,
+	let generics_params_types = generics.params.iter().filter_map(|param| {
+		match param {
+			GenericParam::Type(t) => Some(t.ident.clone()),
+			_ => None,
+		}
 	});
 	let lifetime_ident: Lifetime = parse_str("'struct_variant_lifetime").unwrap();
 	let generics_params_types_lifetimes = quote! {
@@ -227,7 +258,11 @@ pub fn struct_variant(metadata: TokenStream, input: TokenStream) -> TokenStream 
 		#(#from_impl)*
 
 		#(
-			impl<#lifetime_ident, #generic_params> AsRef<dyn #bound_list + #lifetime_ident> for #ident#generics where #generics_params_types_lifetimes {
+			impl<
+				#lifetime_ident,
+				#generic_params
+			> AsRef<dyn #bound_list + #lifetime_ident> for #ident#generics
+			where #generics_params_types_lifetimes {
 				fn as_ref(&self) -> &(dyn #bound_list + #lifetime_ident) {
 					match self {
 						#as_ref_match_arm
