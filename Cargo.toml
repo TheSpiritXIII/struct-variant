@@ -14,6 +14,10 @@ keywords = ["sealed", "from", "any", "convert", "cast", "downcast", "upcast", "e
 [lib]
 proc-macro = true
 
+[features]
+default = []
+doc = []
+
 [dependencies]
 quote = "1.0.9"
 itertools = "0.10.0"
@@ -25,3 +29,6 @@ features = ["full"]
 
 [dev-dependencies]
 trybuild = "1.0.42"
+
+[package.metadata.docs.rs]
+all-features = true

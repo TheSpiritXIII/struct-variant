@@ -1,4 +1,3 @@
-# struct-variant
 [![Crates][crates-badge]][crates-url]
 [![License][license-badge]][license-url]
 [![Build][build-badge]][build-url]
@@ -207,4 +206,10 @@ Please run the formatter and linter first before making a pull request:
 ```bash
 cargo +nightly fmt
 cargo clippy
+```
+
+### Building Docs
+This library uses an unstable feature to build docs from the README file:
+```bash
+cargo +nightly doc --open --features doc
 ```

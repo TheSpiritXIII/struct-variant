@@ -1,5 +1,5 @@
-// #![feature(extended_key_value_attributes)]
-// #[doc = include_str!("../README.md")]
+#![cfg_attr(feature = "doc", feature(extended_key_value_attributes))]
+#![cfg_attr(feature = "doc", cfg_attr(feature = "doc", doc = include_str!("../README.md")))]
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
